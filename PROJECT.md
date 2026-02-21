@@ -10,7 +10,7 @@ npm run dev          # http://localhost:3000
 npm run build        # production check
 ```
 
-Requires `.env.local` with `ANTHROPIC_API_KEY=sk-ant-...` for the AI analysis feature.
+Requires `.env.local` with `ANTHROPIC_API_KEY=sk-ant-...` for the AI analysis/chat feature.
 
 ## Stack
 
@@ -30,7 +30,7 @@ src/
 │   ├── layout.tsx              # Root HTML shell, dark theme
 │   ├── page.tsx                # Main entry: Onboarding OR Dashboard
 │   ├── globals.css             # Tailwind theme, neon colors, glass-card, flash anims
-│   └── api/analyse/route.ts    # POST → Claude API for AI trading commentary
+│   └── api/analyse/route.ts    # POST → Claude API for analysis + patronus chat replies
 │
 ├── store/
 │   └── game-store.ts           # Zustand store: all game state + actions + persist
@@ -42,7 +42,7 @@ src/
     ├── player-stats.tsx         # Avatar, name, level, XP bar, trades/streak/badges stats
     ├── market-table.tsx         # 8 assets list with sparklines + 24h change, click to select
     ├── price-chart.tsx          # SVG area chart, 31-candle history for selected asset
-    ├── trade-panel.tsx          # BUY/SELL buttons, quantity presets, AI analysis trigger
+    ├── trade-panel.tsx          # BUY/SELL buttons, quantity presets, AI analysis + persistent patronus chat
     ├── portfolio.tsx            # Total value, P&L, cash, holdings breakdown, liquidate
     └── achievements.tsx         # 6 achievement cards (shown via Badges button in player-stats)
 ```
@@ -114,7 +114,7 @@ Prices update every 2s with ±0.8–2.0% random walk + trend bias.
 1. **Onboarding** — 3 slides (Welcome, Paper Trading, Gamification) → Name → Patronus → Dashboard
 2. **Tutorial** — 6-step guided overlay (PlayerStats → Markets → Chart → TradePanel → Portfolio → "Try it")
 3. **Trading** — Select asset → BUY/SELL → Watch portfolio → Earn XP → Level up
-4. **AI Analysis** — Button in TradePanel calls `/api/analyse` → Claude returns market commentary
+4. **AI Analysis + Chat** — Button in TradePanel calls `/api/analyse` for first commentary, then user can continue chatting with their patronus
 
 ## Design Tokens
 

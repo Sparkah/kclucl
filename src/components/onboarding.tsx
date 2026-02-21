@@ -64,7 +64,7 @@ export function Onboarding() {
           >
             <Sparkles className="mx-auto mb-4 text-neon-purple" size={48} />
             <h2 className="text-3xl font-bold mb-2">Choose Your Patronus</h2>
-            <p className="text-white/50 mb-6">Pick a companion for your trading journey</p>
+            <p className="text-white/50 mb-6">Pick a patronus for your trading journey</p>
             <div className="grid grid-cols-4 gap-3 mb-6">
               {PATRONUS_LIST.map((p) => (
                 <button

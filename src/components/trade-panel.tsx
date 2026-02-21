@@ -1,23 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useGameStore } from "@/store/game-store";
-import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { PatronusSprite, PATRONUS_LIST } from "./patronus-sprites";
 
 const ORDER_SIZES = [25, 50, 100, 250];
 
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export function TradePanel() {
-  const { assets, selectedAssetId, credits, positions, buyAsset, sellAsset } = useGameStore();
+  const { assets, selectedAssetId, credits, positions, buyAsset, sellAsset, patronus, name } = useGameStore();
   const [orderSize, setOrderSize] = useState(50);
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [flashBuy, setFlashBuy] = useState(false);
   const [flashSell, setFlashSell] = useState(false);
-  const [analysis, setAnalysis] = useState("");
   const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [lastAnalysedId, setLastAnalysedId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
 
   const asset = assets.find((a) => a.id === selectedAssetId);
   const position = positions.find((p) => p.assetId === selectedAssetId);
+  const patronusName = useMemo(
+    () => PATRONUS_LIST.find((p) => p.id === patronus)?.name || "Patronus",
+    [patronus]
+  );
+
+  useEffect(() => {
+    if (!asset) return;
+    setChatMessages([]);
+    setChatInput("");
+    setChatOpen(false);
+    setAnalysisLoading(false);
+  }, [asset?.id]);
 
   if (!asset) {
     return (
@@ -57,13 +76,15 @@ export function TradePanel() {
   const handleAnalyse = async () => {
     if (analysisLoading) return;
     setAnalysisLoading(true);
-    setAnalysis("");
-    setLastAnalysedId(asset.id);
+    setChatOpen(true);
     try {
       const res = await fetch("/api/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "analysis",
+          patronus,
+          playerName: name,
           symbol: asset.symbol,
           name: asset.name,
           sector: asset.sector,
@@ -75,9 +96,50 @@ export function TradePanel() {
         }),
       });
       const data = await res.json();
-      setAnalysis(data.analysis || "Analysis unavailable.");
+      const assistantMessage = data.analysis || data.reply || "Analysis unavailable.";
+      setChatMessages([{ role: "assistant", content: assistantMessage }]);
     } catch {
-      setAnalysis("Failed to get analysis. Check your connection.");
+      setChatMessages([{ role: "assistant", content: "Failed to get analysis. Check your connection." }]);
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  const handleSendChat = async (e: FormEvent) => {
+    e.preventDefault();
+    const prompt = chatInput.trim();
+    if (!prompt || analysisLoading) return;
+
+    const outgoingMessages: ChatMessage[] = [...chatMessages, { role: "user", content: prompt }];
+    setChatMessages(outgoingMessages);
+    setChatInput("");
+    setAnalysisLoading(true);
+    setChatOpen(true);
+
+    try {
+      const res = await fetch("/api/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "chat",
+          patronus,
+          playerName: name,
+          messages: outgoingMessages,
+          symbol: asset.symbol,
+          name: asset.name,
+          sector: asset.sector,
+          price: asset.price,
+          change24h: asset.change24h,
+          priceHistory: asset.priceHistory.slice(-10),
+          hasPosition: !!position,
+          pnl: position ? pnl : null,
+        }),
+      });
+      const data = await res.json();
+      const reply = data.reply || data.analysis || "No reply.";
+      setChatMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setChatMessages((prev) => [...prev, { role: "assistant", content: "Chat request failed. Please try again." }]);
     } finally {
       setAnalysisLoading(false);
     }
@@ -187,22 +249,75 @@ export function TradePanel() {
         {analysisLoading ? "Analysing..." : "AI Analysis"}
       </button>
 
-      {/* Analysis output */}
-      {(analysis || (analysisLoading && lastAnalysedId === asset.id)) && (
-        <div className="mt-3 bg-dark-700 border border-neon-purple/20 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2 text-xs text-neon-purple uppercase tracking-wider">
-            <BrainCircuit size={12} />
-            AI Risk Analyst
-          </div>
-          {analysisLoading ? (
-            <div className="flex items-center gap-2 text-sm text-white/40">
-              <Loader2 size={14} className="animate-spin" />
-              Processing market data...
+      {/* Patronus chat */}
+      {chatOpen && (
+        <div className="mt-3 bg-dark-700 border border-neon-purple/20 rounded-xl p-4 overflow-hidden">
+          <div className="flex items-center justify-between gap-2 mb-3 text-xs text-neon-purple uppercase tracking-wider">
+            <div className="flex items-center gap-2 min-w-0">
+              {patronus ? <PatronusSprite id={patronus} size={20} /> : <BrainCircuit size={12} />}
+              <span className="truncate">{patronusName} Patronus</span>
             </div>
-          ) : (
-            <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{analysis}</p>
-          )}
+            <button
+              type="button"
+              onClick={() => setChatOpen(false)}
+              className="inline-flex items-center gap-1 text-white/50 hover:text-white/80 transition-colors"
+              aria-label="Hide patronus chat"
+            >
+              Hide
+              <ChevronUp size={14} />
+            </button>
+          </div>
+
+          <div className="max-h-52 sm:max-h-56 overflow-y-auto space-y-2 pr-1 min-w-0">
+            {chatMessages.map((message, idx) => (
+              <div
+                key={`${message.role}-${idx}`}
+                className={`rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                  message.role === "assistant"
+                    ? "bg-neon-purple/10 text-white/80"
+                    : "bg-white/10 text-white"
+                }`}
+              >
+                {message.content}
+              </div>
+            ))}
+
+            {analysisLoading && (
+              <div className="flex items-center gap-2 text-sm text-white/40 py-1">
+                <Loader2 size={14} className="animate-spin" />
+                Thinking...
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSendChat} className="mt-3 flex items-center gap-2 min-w-0">
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder={`Ask ${patronusName} anything...`}
+              className="flex-1 min-w-0 bg-dark-800 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-neon-purple/60"
+              disabled={analysisLoading}
+            />
+            <button
+              type="submit"
+              disabled={analysisLoading || !chatInput.trim()}
+              className="shrink-0 h-9 px-3 rounded-lg bg-neon-purple/20 border border-neon-purple/40 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send size={14} />
+            </button>
+          </form>
         </div>
+      )}
+
+      {!chatOpen && chatMessages.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setChatOpen(true)}
+          className="w-full mt-3 py-2.5 rounded-xl font-medium text-xs transition-all bg-dark-700 text-white/70 border border-white/10 hover:text-white hover:border-white/20 flex items-center justify-center gap-1.5"
+        >
+          Reopen {patronusName} Chat
+          <ChevronDown size={14} />
+        </button>
       )}
     </div>
   );
