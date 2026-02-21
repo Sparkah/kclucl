@@ -12,7 +12,11 @@ type ChatMessage = {
   content: string;
 };
 
-export function TradePanel() {
+type TradePanelProps = {
+  onAiAnalysisStart?: () => void;
+};
+
+export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
   const { assets, selectedAssetId, credits, positions, buyAsset, sellAsset, patronus, name } = useGameStore();
   const [orderSize, setOrderSize] = useState(50);
   const [showSizeSelector, setShowSizeSelector] = useState(false);
@@ -75,6 +79,7 @@ export function TradePanel() {
 
   const handleAnalyse = async () => {
     if (analysisLoading) return;
+    onAiAnalysisStart?.();
     setAnalysisLoading(true);
     setChatOpen(true);
     try {
@@ -248,6 +253,9 @@ export function TradePanel() {
         )}
         {analysisLoading ? "Analysing..." : "AI Analysis"}
       </button>
+      <p className="mt-1.5 text-[11px] text-white/35 text-center">
+        Tip: Ask short questions like "buy now?" or "explain this move".
+      </p>
 
       {/* Patronus chat */}
       {chatOpen && (

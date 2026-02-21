@@ -8,10 +8,16 @@ import { TradePanel } from "@/components/trade-panel";
 import { Portfolio } from "@/components/portfolio";
 import { PlayerStats } from "@/components/player-stats";
 import { PriceChart } from "@/components/price-chart";
-import { DashboardTutorial } from "@/components/dashboard-tutorial";
+import { X } from "lucide-react";
 
 export default function Home() {
-  const { onboardingComplete, tutorialComplete, tickPrices } = useGameStore();
+  const {
+    onboardingComplete,
+    tutorialComplete,
+    completeTutorial,
+    selectedAssetId,
+    tickPrices,
+  } = useGameStore();
 
   useEffect(() => {
     const interval = setInterval(tickPrices, 2000);
@@ -22,36 +28,57 @@ export default function Home() {
     return <Onboarding />;
   }
 
+  const showGuide = !tutorialComplete;
+  const atStepTwo = !!selectedAssetId;
+
   return (
     <div className="min-h-screen p-4 lg:p-6">
       <div className="mx-auto max-w-[1400px]">
+        {showGuide && (
+          <div className="mb-4 glass-card rounded-xl border border-neon-blue/25 px-4 py-3 flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wider text-neon-blue mb-1">Quick Tutorial</div>
+              {!atStepTwo ? (
+                <p className="text-sm text-white/75">Step 1/2: Select an asset from the Markets list.</p>
+              ) : (
+                <p className="text-sm text-white/75">Step 2/2: Tap <span className="text-neon-purple">AI Analysis</span> in the trade panel.</p>
+              )}
+            </div>
+            <button
+              onClick={completeTutorial}
+              className="text-white/40 hover:text-white/70 transition-colors"
+              aria-label="Dismiss tutorial"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-3">
-            <div data-tutorial="player-stats">
+            <div>
               <PlayerStats />
             </div>
-            <div data-tutorial="market-table">
+            <div>
               <MarketTable />
             </div>
           </div>
 
           <div className="space-y-4 lg:col-span-5">
-            <div data-tutorial="price-chart">
+            <div>
               <PriceChart />
             </div>
-            <div data-tutorial="trade-panel">
-              <TradePanel />
+            <div>
+              <TradePanel onAiAnalysisStart={atStepTwo && showGuide ? completeTutorial : undefined} />
             </div>
           </div>
 
           <div className="space-y-4 lg:col-span-4">
-            <div data-tutorial="portfolio">
+            <div>
               <Portfolio />
             </div>
           </div>
         </div>
-
-        {!tutorialComplete && <DashboardTutorial />}
       </div>
     </div>
   );
