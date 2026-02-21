@@ -78,14 +78,11 @@ type GameState = {
 };
 
 const INITIAL_ASSETS: Asset[] = [
-  { id: "sol-energy", name: "SolarGrid Corp", symbol: "SOLG", emoji: "☀️", price: 142.5, priceHistory: [], change24h: 2.3, sector: "Energy" },
-  { id: "neuralink-ai", name: "NeuraAI Systems", symbol: "NRAI", emoji: "🧠", price: 891.2, priceHistory: [], change24h: -1.2, sector: "AI" },
-  { id: "aqua-farm", name: "AquaFarm Global", symbol: "AQUA", emoji: "🌊", price: 67.8, priceHistory: [], change24h: 5.1, sector: "Food" },
-  { id: "orbit-log", name: "Orbit Logistics", symbol: "ORBT", emoji: "🚀", price: 234.0, priceHistory: [], change24h: 0.8, sector: "Space" },
-  { id: "med-nano", name: "MedNano Health", symbol: "MNHL", emoji: "💊", price: 456.3, priceHistory: [], change24h: -0.5, sector: "Health" },
-  { id: "robo-build", name: "RoboBuild Inc", symbol: "ROBO", emoji: "🤖", price: 178.9, priceHistory: [], change24h: 3.7, sector: "Robotics" },
-  { id: "quantum-sec", name: "QuantumShield", symbol: "QSHD", emoji: "🔐", price: 312.4, priceHistory: [], change24h: 1.9, sector: "Security" },
-  { id: "green-mat", name: "GreenMatter Labs", symbol: "GRML", emoji: "🧬", price: 89.6, priceHistory: [], change24h: -2.8, sector: "BioTech" },
+  { id: "anthropic", name: "Anthropic Intelligence", symbol: "ANTH", emoji: "🤖", price: 142.5, priceHistory: [], change24h: 2.3, sector: "Frontier AI" },
+  { id: "google-ai", name: "Google DeepMind", symbol: "GOOG", emoji: "🔍", price: 891.2, priceHistory: [], change24h: -1.2, sector: "AI Cloud" },
+  { id: "openai", name: "OpenAI Systems", symbol: "OPEN", emoji: "🧠", price: 456.3, priceHistory: [], change24h: 1.8, sector: "General AI" },
+  { id: "xai", name: "xAI Labs", symbol: "XAI", emoji: "⚡", price: 234.0, priceHistory: [], change24h: 0.8, sector: "Reasoning Models" },
+  { id: "mistral", name: "Mistral Compute", symbol: "MSTR", emoji: "🌪️", price: 89.6, priceHistory: [], change24h: -2.8, sector: "Open Models" },
 ];
 
 const ACHIEVEMENTS: Achievement[] = [

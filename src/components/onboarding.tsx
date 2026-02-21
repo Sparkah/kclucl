@@ -9,9 +9,9 @@ const steps = [
   {
     icon: Rocket,
     title: "Welcome to 2036",
-    subtitle: "The world has changed. Machines do the work. Humans do the thinking.",
+    subtitle: "AI giants dominate global markets and everyone trades their momentum.",
     description:
-      "In this new era, trading isn't just for Wall Street — it's for everyone. Your job? Learn to spot opportunities, manage risk, and grow your wealth.",
+      "In this simulation, your core market is leading AI companies: Anthropic, Google DeepMind, OpenAI, xAI, and Mistral.",
     color: "neon-blue",
   },
   {
@@ -19,7 +19,7 @@ const steps = [
     title: "Paper Trading, Real Skills",
     subtitle: "You start with ₮10,000 in credits. No real money at risk.",
     description:
-      "Buy and sell futuristic assets — from solar energy grids to quantum security firms. Watch prices move in real-time and learn how markets work.",
+      "Trade AI leaders in real-time. Learn momentum, drawdown control, and portfolio diversification before touching live capital.",
     color: "neon-green",
   },
   {
