@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useGameStore } from "@/store/game-store";
 import { Rocket, TrendingUp, Trophy, Sparkles, ArrowRight } from "lucide-react";
+import { PatronusSprite, PATRONUS_LIST } from "./patronus-sprites";
 
 const steps = [
   {
@@ -32,8 +33,10 @@ const steps = [
 ];
 
 export function Onboarding() {
-  const { onboardingStep, advanceOnboarding, completeOnboarding, setName } = useGameStore();
+  const { onboardingStep, advanceOnboarding, completeOnboarding, setName, setPatronus } = useGameStore();
   const [nameInput, setNameInput] = useState("");
+  const [phase, setPhase] = useState<"name" | "patronus">("name");
+  const [selectedPatronus, setSelectedPatronus] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -42,14 +45,60 @@ export function Onboarding() {
     return () => clearTimeout(t);
   }, [onboardingStep]);
 
-  // Reset visibility on step change for transition
+  // Reset visibility on step/phase change for transition
   useEffect(() => {
     setVisible(false);
     const t = setTimeout(() => setVisible(true), 50);
     return () => clearTimeout(t);
-  }, [onboardingStep]);
+  }, [onboardingStep, phase]);
 
   if (onboardingStep >= steps.length) {
+    // Patronus selection phase
+    if (phase === "patronus") {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900">
+          <div
+            className={`glass-card rounded-2xl p-10 max-w-xl w-full mx-4 text-center transition-all duration-500 ${
+              visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+            }`}
+          >
+            <Sparkles className="mx-auto mb-4 text-neon-purple" size={48} />
+            <h2 className="text-3xl font-bold mb-2">Choose Your Patronus</h2>
+            <p className="text-white/50 mb-6">Pick a companion for your trading journey</p>
+            <div className="grid grid-cols-4 gap-3 mb-6">
+              {PATRONUS_LIST.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPatronus(p.id)}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200 ${
+                    selectedPatronus === p.id
+                      ? "border-neon-purple bg-neon-purple/20 shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+                      : "border-white/10 bg-dark-700 hover:border-white/30"
+                  }`}
+                >
+                  <PatronusSprite id={p.id} size={40} />
+                  <span className="text-xs font-medium">{p.name}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                if (selectedPatronus) {
+                  setPatronus(selectedPatronus);
+                  completeOnboarding();
+                }
+              }}
+              disabled={!selectedPatronus}
+              className="w-full bg-neon-purple/20 border border-neon-purple text-neon-purple rounded-xl px-6 py-3 font-semibold hover:bg-neon-purple/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Start Trading
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Name entry phase
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-dark-900">
         <div
@@ -67,7 +116,7 @@ export function Onboarding() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && nameInput.trim()) {
                 setName(nameInput.trim());
-                completeOnboarding();
+                setPhase("patronus");
               }
             }}
             placeholder="Enter your name..."
@@ -78,13 +127,13 @@ export function Onboarding() {
             onClick={() => {
               if (nameInput.trim()) {
                 setName(nameInput.trim());
-                completeOnboarding();
+                setPhase("patronus");
               }
             }}
             disabled={!nameInput.trim()}
             className="w-full bg-neon-blue/20 border border-neon-blue text-neon-blue rounded-xl px-6 py-3 font-semibold hover:bg-neon-blue/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            Start Trading
+            Next <ArrowRight size={16} className="inline ml-1" />
           </button>
         </div>
       </div>

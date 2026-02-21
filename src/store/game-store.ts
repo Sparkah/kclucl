@@ -51,6 +51,9 @@ type GameState = {
   streak: number;
   totalTrades: number;
 
+  // Patronus
+  patronus: string | null;
+
   // Onboarding
   onboardingStep: number;
   onboardingComplete: boolean;
@@ -61,6 +64,7 @@ type GameState = {
 
   // Actions
   setName: (name: string) => void;
+  setPatronus: (id: string) => void;
   completeOnboarding: () => void;
   advanceOnboarding: () => void;
   advanceTutorial: () => void;
@@ -128,12 +132,15 @@ export const useGameStore = create<GameState>()(
       achievements: ACHIEVEMENTS,
       streak: 0,
       totalTrades: 0,
+      patronus: null,
       onboardingStep: 0,
       onboardingComplete: false,
       tutorialStep: 0,
       tutorialComplete: false,
 
       setName: (name) => set({ name }),
+
+      setPatronus: (id) => set({ patronus: id }),
 
       completeOnboarding: () => set({ onboardingComplete: true }),
 
@@ -257,6 +264,7 @@ export const useGameStore = create<GameState>()(
       name: "tradequest-2036",
       partialize: (state) => ({
         name: state.name,
+        patronus: state.patronus,
         level: state.level,
         xp: state.xp,
         xpToNext: state.xpToNext,

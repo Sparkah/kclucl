@@ -2,6 +2,7 @@
 
 import { useGameStore } from "@/store/game-store";
 import { Star, Flame, Award } from "lucide-react";
+import { PatronusSprite } from "./patronus-sprites";
 
 const LEVEL_TITLES = [
   "", "Rookie", "Apprentice", "Analyst", "Trader", "Strategist",
@@ -9,7 +10,7 @@ const LEVEL_TITLES = [
 ];
 
 export function PlayerStats() {
-  const { name, level, xp, xpToNext, totalTrades, achievements, streak } = useGameStore();
+  const { name, level, xp, xpToNext, totalTrades, achievements, streak, patronus } = useGameStore();
   const title = LEVEL_TITLES[Math.min(level, LEVEL_TITLES.length - 1)];
   const xpPct = (xp / xpToNext) * 100;
   const unlockedCount = achievements.filter((a) => a.unlockedAt).length;
@@ -18,9 +19,15 @@ export function PlayerStats() {
     <div className="glass-card rounded-2xl p-6">
       {/* Player header */}
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-lg font-bold">
-          {name?.[0]?.toUpperCase() || "?"}
-        </div>
+        {patronus ? (
+          <div className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center">
+            <PatronusSprite id={patronus} size={32} />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-lg font-bold">
+            {name?.[0]?.toUpperCase() || "?"}
+          </div>
+        )}
         <div>
           <div className="font-semibold">{name || "Trader"}</div>
           <div className="text-xs text-neon-blue">{title} — Level {level}</div>
