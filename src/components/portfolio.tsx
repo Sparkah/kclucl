@@ -1,10 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useGameStore } from "@/store/game-store";
 import { Wallet, PieChart } from "lucide-react";
+import { Cell, Pie, PieChart as RePieChart, ResponsiveContainer } from "recharts";
 
 export function Portfolio() {
   const { credits, positions, assets, startingCredits } = useGameStore();
+  const [activeSlice, setActiveSlice] = useState<number | null>(null);
 
   const holdingsValue = positions.reduce((sum, pos) => {
     const asset = assets.find((a) => a.id === pos.assetId);
@@ -13,6 +16,25 @@ export function Portfolio() {
 
   const totalValue = credits + holdingsValue;
   const totalPnl = ((totalValue - startingCredits) / startingCredits) * 100;
+  const holdings = useMemo(
+    () =>
+      positions
+        .map((pos) => {
+          const asset = assets.find((a) => a.id === pos.assetId);
+          if (!asset) return null;
+          const value = asset.price * pos.quantity;
+          return {
+            id: pos.assetId,
+            symbol: asset.symbol,
+            emoji: asset.emoji,
+            value,
+          };
+        })
+        .filter((h): h is { id: string; symbol: string; emoji: string; value: number } => !!h && h.value > 0),
+    [assets, positions]
+  );
+
+  const pieColors = ["#00f0ff", "#39ff14", "#b44aff", "#ff6b2b", "#ff2d95", "#62dbff"];
 
   return (
     <div className="glass-card rounded-2xl p-6">
@@ -40,6 +62,35 @@ export function Portfolio() {
           <div className="text-xs text-white/30 uppercase tracking-wider flex items-center gap-1">
             <PieChart size={10} /> Holdings
           </div>
+          {holdings.length > 0 && (
+            <div className="h-40 rounded-xl bg-dark-700/60 border border-white/5 p-2 relative">
+              <div className="absolute left-2 top-2 rounded-md bg-dark-800/90 border border-white/10 px-2 py-1 text-[11px] text-white/80 z-10">
+                {activeSlice !== null && holdings[activeSlice]
+                  ? `${holdings[activeSlice].emoji} ${holdings[activeSlice].symbol} · ₮${holdings[activeSlice].value.toFixed(2)}`
+                  : "Hover a slice"}
+              </div>
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={holdings}
+                    dataKey="value"
+                    nameKey="symbol"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={36}
+                    outerRadius={62}
+                    paddingAngle={2}
+                    onMouseEnter={(_, index) => setActiveSlice(index)}
+                    onMouseLeave={() => setActiveSlice(null)}
+                  >
+                    {holdings.map((entry, idx) => (
+                      <Cell key={entry.id} fill={pieColors[idx % pieColors.length]} />
+                    ))}
+                  </Pie>
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           {positions.map((pos) => {
             const asset = assets.find((a) => a.id === pos.assetId);
             if (!asset) return null;
@@ -51,7 +102,7 @@ export function Portfolio() {
                   <span>{asset.emoji}</span>
                   <div>
                     <div className="text-sm font-semibold">{asset.symbol}</div>
-                    <div className="text-xs text-white/30">{pos.quantity} shares</div>
+                    <div className="text-xs text-white/30">{pos.quantity.toFixed(3)} shares</div>
                   </div>
                 </div>
                 <div className="text-right">

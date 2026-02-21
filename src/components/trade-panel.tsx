@@ -173,7 +173,7 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
         <div className="bg-dark-700 rounded-xl p-3 mb-4 flex justify-between text-sm">
           <div>
             <span className="text-white/40">Holding: </span>
-            <span className="font-mono">{position.quantity.toFixed(4)} units</span>
+            <span className="font-mono">{position.quantity.toFixed(3)} shares</span>
           </div>
           <div>
             <span className="text-white/40">P&L: </span>
