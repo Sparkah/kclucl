@@ -7,7 +7,6 @@ import { MarketTable } from "@/components/market-table";
 import { TradePanel } from "@/components/trade-panel";
 import { Portfolio } from "@/components/portfolio";
 import { PlayerStats } from "@/components/player-stats";
-import { Achievements } from "@/components/achievements";
 import { PriceChart } from "@/components/price-chart";
 import { DashboardTutorial } from "@/components/dashboard-tutorial";
 import { Zap } from "lucide-react";
@@ -68,9 +67,6 @@ export default function Home() {
         <div className="lg:col-span-4 space-y-4">
           <div data-tutorial="portfolio">
             <Portfolio />
-          </div>
-          <div data-tutorial="achievements">
-            <Achievements />
           </div>
         </div>
       </div>

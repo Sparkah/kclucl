@@ -36,12 +36,6 @@ const TUTORIAL_STEPS = [
     description: "Your portfolio shows your holdings and total value. Track your profits here.",
   },
   {
-    target: "achievements",
-    icon: "🏆",
-    title: "Achievements",
-    description: "Complete challenges to unlock badges and earn bonus XP!",
-  },
-  {
     target: "market-table",
     icon: "👆",
     title: "Now You Try!",
