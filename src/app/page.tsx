@@ -8,10 +8,16 @@ import { TradePanel } from "@/components/trade-panel";
 import { Portfolio } from "@/components/portfolio";
 import { PlayerStats } from "@/components/player-stats";
 import { PriceChart } from "@/components/price-chart";
-import { DashboardTutorial } from "@/components/dashboard-tutorial";
+import { QuickTutorial } from "@/components/quick-tutorial";
 
 export default function Home() {
-  const { onboardingComplete, tutorialComplete, tickPrices } = useGameStore();
+  const {
+    onboardingComplete,
+    tutorialComplete,
+    completeTutorial,
+    selectedAssetId,
+    tickPrices,
+  } = useGameStore();
 
   useEffect(() => {
     const interval = setInterval(tickPrices, 2000);
@@ -22,12 +28,16 @@ export default function Home() {
     return <Onboarding />;
   }
 
+  const showGuide = !tutorialComplete;
+  const atStepTwo = !!selectedAssetId;
+  const guideStep: 1 | 2 = atStepTwo ? 2 : 1;
+
   return (
     <div className="min-h-screen p-4 lg:p-6">
       <div className="mx-auto max-w-[1400px]">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-3">
-            <div data-tutorial="player-stats">
+            <div>
               <PlayerStats />
             </div>
             <div data-tutorial="market-table">
@@ -36,22 +46,22 @@ export default function Home() {
           </div>
 
           <div className="space-y-4 lg:col-span-5">
-            <div data-tutorial="price-chart">
+            <div>
               <PriceChart />
             </div>
             <div data-tutorial="trade-panel">
-              <TradePanel />
+              <TradePanel onAiAnalysisStart={atStepTwo && showGuide ? completeTutorial : undefined} />
             </div>
           </div>
 
           <div className="space-y-4 lg:col-span-4">
-            <div data-tutorial="portfolio">
+            <div>
               <Portfolio />
             </div>
           </div>
         </div>
 
-        {!tutorialComplete && <DashboardTutorial />}
+        {showGuide && <QuickTutorial step={guideStep} onDismiss={completeTutorial} />}
       </div>
     </div>
   );
