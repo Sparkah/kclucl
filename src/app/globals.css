@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-green: #39ff14;
+  --color-neon-blue: #00f0ff;
+  --color-neon-purple: #b44aff;
+  --color-neon-pink: #ff2d95;
+  --color-neon-orange: #ff6b2b;
+  --color-dark-900: #0a0a0f;
+  --color-dark-800: #12121a;
+  --color-dark-700: #1a1a2e;
+  --color-dark-600: #252540;
+  --color-profit: #39ff14;
+  --color-loss: #ff2d55;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+body {
+  background: var(--color-dark-900);
+  color: white;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-dark-800); }
+::-webkit-scrollbar-thumb { background: var(--color-dark-600); border-radius: 3px; }
+
+/* Glow effects */
+.glow-green { text-shadow: 0 0 10px var(--color-neon-green), 0 0 40px rgba(57, 255, 20, 0.3); }
+.glow-blue { text-shadow: 0 0 10px var(--color-neon-blue), 0 0 40px rgba(0, 240, 255, 0.3); }
+
+/* Card glass */
+.glass-card {
+  background: rgba(18, 18, 26, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Pulse animation for live prices */
+@keyframes price-flash-green {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(57, 255, 20, 0.15); }
+}
+@keyframes price-flash-red {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(255, 45, 85, 0.15); }
+}
+.flash-green { animation: price-flash-green 0.6s ease; }
+.flash-red { animation: price-flash-red 0.6s ease; }
