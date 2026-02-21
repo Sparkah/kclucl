@@ -1,0 +1,134 @@
+import { GoogleGenAI, Type, Modality } from "@google/genai";
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+
+export interface MarketAnalysis {
+  signal: 'BUY' | 'SELL' | 'HOLD';
+  reasoning: string;
+  indicators: {
+    name: string;
+    value: string;
+    description: string;
+  }[];
+}
+
+export interface TradingStrategy {
+  tradingSpeed: 'SLOW' | 'NORMAL' | 'FAST';
+  riskTolerance: 'CONSERVATIVE' | 'MODERATE' | 'AGGRESSIVE';
+  maxPositionSize: number; // Percentage of balance
+  directive: string;
+}
+
+export async function parseStrategy(instruction: string): Promise<TradingStrategy> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analyze this trading instruction and convert it into a structured strategy: "${instruction}"`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            tradingSpeed: { type: Type.STRING, enum: ['SLOW', 'NORMAL', 'FAST'] },
+            riskTolerance: { type: Type.STRING, enum: ['CONSERVATIVE', 'MODERATE', 'AGGRESSIVE'] },
+            maxPositionSize: { type: Type.NUMBER, description: "Max % of balance to spend per trade (1-20)" },
+            directive: { type: Type.STRING, description: "A short summary of the user's intent" }
+          },
+          required: ['tradingSpeed', 'riskTolerance', 'maxPositionSize', 'directive']
+        }
+      }
+    });
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("Strategy parsing failed:", error);
+    return {
+      tradingSpeed: 'NORMAL',
+      riskTolerance: 'MODERATE',
+      maxPositionSize: 5,
+      directive: "Balanced trading"
+    };
+  }
+}
+
+export async function analyzeStock(symbol: string, priceHistory: any[]): Promise<MarketAnalysis> {
+  const prompt = `
+    Analyze the following stock price history for ${symbol} and provide a trading signal (BUY, SELL, or HOLD).
+    Explain the reasoning based on technical analysis (e.g., trends, support/resistance).
+    Include 2-3 technical indicators and their values.
+    
+    Price History (last 20 points):
+    ${JSON.stringify(priceHistory.slice(-20))}
+    
+    Return the response in JSON format.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            signal: { type: Type.STRING, enum: ["BUY", "SELL", "HOLD"] },
+            reasoning: { type: Type.STRING },
+            indicators: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  value: { type: Type.STRING },
+                  description: { type: Type.STRING }
+                },
+                required: ["name", "value", "description"]
+              }
+            }
+          },
+          required: ["signal", "reasoning", "indicators"]
+        }
+      }
+    });
+
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("AI Analysis failed:", error);
+    return {
+      signal: 'HOLD',
+      reasoning: "Unable to analyze at this moment. Market volatility is high.",
+      indicators: []
+    };
+  }
+}
+
+export async function generateSpeech(text: string, character: string): Promise<string | null> {
+  const voiceMap: Record<string, string> = {
+    'Batman': 'Fenrir',
+    'SpongeBob': 'Puck',
+    'Barbie': 'Kore'
+  };
+
+  const prompt = `Speak exactly like ${character}. Read this trading advice: ${text}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: voiceMap[character] || 'Zephyr' },
+          },
+        },
+      },
+    });
+
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    return base64Audio || null;
+  } catch (error) {
+    console.error("TTS failed:", error);
+    return null;
+  }
+}
