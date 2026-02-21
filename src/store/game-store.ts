@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type Asset = {
   id: string;
@@ -25,6 +26,8 @@ export type Achievement = {
   emoji: string;
   unlockedAt?: number;
 };
+
+const DUST_THRESHOLD = 0.001;
 
 type GameState = {
   // Player
@@ -90,152 +93,185 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: "loss-lesson", title: "Learning Experience", description: "Sell at a loss (it happens!)", emoji: "📚" },
 ];
 
+function initAssetHistories(assets: Asset[]) {
+  assets.forEach((asset) => {
+    if (asset.priceHistory.length > 0) return;
+    const history: number[] = [];
+    let p = asset.price * 0.9;
+    for (let i = 0; i < 30; i++) {
+      p += (Math.random() - 0.48) * p * 0.03;
+      history.push(Number(p.toFixed(2)));
+    }
+    history.push(asset.price);
+    asset.priceHistory = history;
+  });
+}
+
 // Initialize price histories
-INITIAL_ASSETS.forEach((asset) => {
-  const history: number[] = [];
-  let p = asset.price * 0.9;
-  for (let i = 0; i < 30; i++) {
-    p += (Math.random() - 0.48) * p * 0.03;
-    history.push(Number(p.toFixed(2)));
-  }
-  history.push(asset.price);
-  asset.priceHistory = history;
-});
+initAssetHistories(INITIAL_ASSETS);
 
 const STARTING_CREDITS = 10000;
 
-export const useGameStore = create<GameState>((set, get) => ({
-  name: "",
-  level: 1,
-  xp: 0,
-  xpToNext: 100,
-  credits: STARTING_CREDITS,
-  startingCredits: STARTING_CREDITS,
-  positions: [],
-  tradeHistory: [],
-  assets: INITIAL_ASSETS,
-  selectedAssetId: null,
-  achievements: ACHIEVEMENTS,
-  streak: 0,
-  totalTrades: 0,
-  onboardingStep: 0,
-  onboardingComplete: false,
-  tutorialStep: 0,
-  tutorialComplete: false,
+export const useGameStore = create<GameState>()(
+  persist(
+    (set, get) => ({
+      name: "",
+      level: 1,
+      xp: 0,
+      xpToNext: 100,
+      credits: STARTING_CREDITS,
+      startingCredits: STARTING_CREDITS,
+      positions: [],
+      tradeHistory: [],
+      assets: INITIAL_ASSETS,
+      selectedAssetId: null,
+      achievements: ACHIEVEMENTS,
+      streak: 0,
+      totalTrades: 0,
+      onboardingStep: 0,
+      onboardingComplete: false,
+      tutorialStep: 0,
+      tutorialComplete: false,
 
-  setName: (name) => set({ name }),
+      setName: (name) => set({ name }),
 
-  completeOnboarding: () => set({ onboardingComplete: true }),
+      completeOnboarding: () => set({ onboardingComplete: true }),
 
-  advanceOnboarding: () => set((s) => ({ onboardingStep: s.onboardingStep + 1 })),
+      advanceOnboarding: () => set((s) => ({ onboardingStep: s.onboardingStep + 1 })),
 
-  advanceTutorial: () => set((s) => ({ tutorialStep: s.tutorialStep + 1 })),
-  completeTutorial: () => set({ tutorialComplete: true }),
+      advanceTutorial: () => set((s) => ({ tutorialStep: s.tutorialStep + 1 })),
+      completeTutorial: () => set({ tutorialComplete: true }),
 
-  selectAsset: (id) => set({ selectedAssetId: id }),
+      selectAsset: (id) => set({ selectedAssetId: id }),
 
-  buyAsset: (assetId, quantity) => {
-    const state = get();
-    const asset = state.assets.find((a) => a.id === assetId);
-    if (!asset) return;
+      buyAsset: (assetId, quantity) => {
+        const state = get();
+        const asset = state.assets.find((a) => a.id === assetId);
+        if (!asset) return;
 
-    const cost = asset.price * quantity;
-    if (cost > state.credits) return;
+        const cost = asset.price * quantity;
+        if (cost > state.credits) return;
 
-    const existing = state.positions.find((p) => p.assetId === assetId);
-    let newPositions: Position[];
+        const existing = state.positions.find((p) => p.assetId === assetId);
+        let newPositions: Position[];
 
-    if (existing) {
-      const totalQty = existing.quantity + quantity;
-      const newAvg = (existing.avgPrice * existing.quantity + asset.price * quantity) / totalQty;
-      newPositions = state.positions.map((p) =>
-        p.assetId === assetId ? { ...p, quantity: totalQty, avgPrice: newAvg } : p
-      );
-    } else {
-      newPositions = [...state.positions, { assetId, quantity, avgPrice: asset.price, openedAt: Date.now() }];
-    }
+        if (existing) {
+          const totalQty = existing.quantity + quantity;
+          const newAvg = (existing.avgPrice * existing.quantity + asset.price * quantity) / totalQty;
+          newPositions = state.positions.map((p) =>
+            p.assetId === assetId ? { ...p, quantity: totalQty, avgPrice: newAvg } : p
+          );
+        } else {
+          newPositions = [...state.positions, { assetId, quantity, avgPrice: asset.price, openedAt: Date.now() }];
+        }
 
-    const newTrades = state.totalTrades + 1;
+        const newTrades = state.totalTrades + 1;
 
-    set({
-      credits: state.credits - cost,
-      positions: newPositions,
-      tradeHistory: [...state.tradeHistory, { assetId, type: "buy", quantity, price: asset.price, time: Date.now() }],
-      totalTrades: newTrades,
-    });
+        set({
+          credits: state.credits - cost,
+          positions: newPositions,
+          tradeHistory: [...state.tradeHistory, { assetId, type: "buy", quantity, price: asset.price, time: Date.now() }],
+          totalTrades: newTrades,
+        });
 
-    // Achievement checks
-    if (state.totalTrades === 0) get().unlockAchievement("first-trade");
-    if (newTrades >= 10) get().unlockAchievement("ten-trades");
-    if (newPositions.filter((p) => p.quantity > 0).length >= 3) get().unlockAchievement("diversify");
+        // Achievement checks
+        if (state.totalTrades === 0) get().unlockAchievement("first-trade");
+        if (newTrades >= 10) get().unlockAchievement("ten-trades");
+        if (newPositions.filter((p) => p.quantity > DUST_THRESHOLD).length >= 3) get().unlockAchievement("diversify");
 
-    get().addXp(15);
-  },
+        get().addXp(15);
+      },
 
-  sellAsset: (assetId, quantity) => {
-    const state = get();
-    const asset = state.assets.find((a) => a.id === assetId);
-    const position = state.positions.find((p) => p.assetId === assetId);
-    if (!asset || !position || quantity > position.quantity) return;
+      sellAsset: (assetId, quantity) => {
+        const state = get();
+        const asset = state.assets.find((a) => a.id === assetId);
+        const position = state.positions.find((p) => p.assetId === assetId);
+        if (!asset || !position || quantity > position.quantity) return;
 
-    const revenue = asset.price * quantity;
-    const profitPct = ((asset.price - position.avgPrice) / position.avgPrice) * 100;
+        const revenue = asset.price * quantity;
+        const profitPct = ((asset.price - position.avgPrice) / position.avgPrice) * 100;
 
-    const newPositions = state.positions
-      .map((p) => (p.assetId === assetId ? { ...p, quantity: p.quantity - quantity } : p))
-      .filter((p) => p.quantity > 0);
+        const newPositions = state.positions
+          .map((p) => (p.assetId === assetId ? { ...p, quantity: p.quantity - quantity } : p))
+          .filter((p) => p.quantity > DUST_THRESHOLD);
 
-    set({
-      credits: state.credits + revenue,
-      positions: newPositions,
-      tradeHistory: [...state.tradeHistory, { assetId, type: "sell", quantity, price: asset.price, time: Date.now() }],
-      totalTrades: state.totalTrades + 1,
-    });
+        // Streak: profitable sell increments, loss resets
+        const newStreak = profitPct > 0 ? state.streak + 1 : 0;
 
-    // Achievement checks
-    if (profitPct >= 10) get().unlockAchievement("profit-10");
-    if (profitPct < 0) get().unlockAchievement("loss-lesson");
-    if (state.credits + revenue >= state.startingCredits * 2) get().unlockAchievement("double-up");
+        set({
+          credits: state.credits + revenue,
+          positions: newPositions,
+          tradeHistory: [...state.tradeHistory, { assetId, type: "sell", quantity, price: asset.price, time: Date.now() }],
+          totalTrades: state.totalTrades + 1,
+          streak: newStreak,
+        });
 
-    get().addXp(profitPct > 0 ? 25 : 10);
-  },
+        // Achievement checks
+        if (profitPct >= 10) get().unlockAchievement("profit-10");
+        if (profitPct < 0) get().unlockAchievement("loss-lesson");
+        if (state.credits + revenue >= state.startingCredits * 2) get().unlockAchievement("double-up");
 
-  tickPrices: () => {
-    set((state) => ({
-      assets: state.assets.map((asset) => {
-        const volatility = 0.008 + Math.random() * 0.012;
-        const trend = asset.change24h > 0 ? 0.001 : -0.001;
-        const change = (Math.random() - 0.49 + trend) * volatility;
-        const newPrice = Number((asset.price * (1 + change)).toFixed(2));
-        const newHistory = [...asset.priceHistory.slice(-30), newPrice];
-        const oldPrice = newHistory[0];
-        const change24h = Number((((newPrice - oldPrice) / oldPrice) * 100).toFixed(2));
-        return { ...asset, price: newPrice, priceHistory: newHistory, change24h };
+        get().addXp(profitPct > 0 ? 25 : 10);
+      },
+
+      tickPrices: () => {
+        set((state) => ({
+          assets: state.assets.map((asset) => {
+            const volatility = 0.008 + Math.random() * 0.012;
+            const trend = asset.change24h > 0 ? 0.001 : -0.001;
+            const change = (Math.random() - 0.49 + trend) * volatility;
+            const newPrice = Number((asset.price * (1 + change)).toFixed(2));
+            const newHistory = [...asset.priceHistory.slice(-30), newPrice];
+            const oldPrice = newHistory[0];
+            const change24h = Number((((newPrice - oldPrice) / oldPrice) * 100).toFixed(2));
+            return { ...asset, price: newPrice, priceHistory: newHistory, change24h };
+          }),
+        }));
+      },
+
+      addXp: (amount) => {
+        set((state) => {
+          let newXp = state.xp + amount;
+          let newLevel = state.level;
+          let newXpToNext = state.xpToNext;
+
+          while (newXp >= newXpToNext) {
+            newXp -= newXpToNext;
+            newLevel++;
+            newXpToNext = Math.floor(newXpToNext * 1.5);
+          }
+
+          return { xp: newXp, level: newLevel, xpToNext: newXpToNext };
+        });
+      },
+
+      unlockAchievement: (id) => {
+        set((state) => ({
+          achievements: state.achievements.map((a) =>
+            a.id === id && !a.unlockedAt ? { ...a, unlockedAt: Date.now() } : a
+          ),
+        }));
+      },
+    }),
+    {
+      name: "tradequest-2036",
+      partialize: (state) => ({
+        name: state.name,
+        level: state.level,
+        xp: state.xp,
+        xpToNext: state.xpToNext,
+        credits: state.credits,
+        startingCredits: state.startingCredits,
+        positions: state.positions,
+        tradeHistory: state.tradeHistory,
+        achievements: state.achievements,
+        streak: state.streak,
+        totalTrades: state.totalTrades,
+        onboardingStep: state.onboardingStep,
+        onboardingComplete: state.onboardingComplete,
+        tutorialStep: state.tutorialStep,
+        tutorialComplete: state.tutorialComplete,
       }),
-    }));
-  },
-
-  addXp: (amount) => {
-    set((state) => {
-      let newXp = state.xp + amount;
-      let newLevel = state.level;
-      let newXpToNext = state.xpToNext;
-
-      while (newXp >= newXpToNext) {
-        newXp -= newXpToNext;
-        newLevel++;
-        newXpToNext = Math.floor(newXpToNext * 1.5);
-      }
-
-      return { xp: newXp, level: newLevel, xpToNext: newXpToNext };
-    });
-  },
-
-  unlockAchievement: (id) => {
-    set((state) => ({
-      achievements: state.achievements.map((a) =>
-        a.id === id && !a.unlockedAt ? { ...a, unlockedAt: Date.now() } : a
-      ),
-    }));
-  },
-}));
+    }
+  )
+);
