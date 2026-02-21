@@ -386,7 +386,6 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
                     : "bg-white/10 text-white"
                 }`}
               >
-                <div>{message.content}</div>
                 {message.role === "assistant" && (
                   <button
                     type="button"
@@ -402,6 +401,7 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
                     Listen
                   </button>
                 )}
+                <div className={message.role === "assistant" ? "mt-2" : ""}>{message.content}</div>
               </div>
             ))}
 
