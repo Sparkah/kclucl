@@ -276,6 +276,7 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
 
       {/* AI Analyse button */}
       <button
+        data-tutorial="ai-analysis-btn"
         onClick={handleAnalyse}
         disabled={analysisLoading}
         className="w-full mt-3 py-3 rounded-xl font-semibold text-sm transition-all bg-neon-purple/15 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/25 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
