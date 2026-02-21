@@ -9,10 +9,11 @@ import { Portfolio } from "@/components/portfolio";
 import { PlayerStats } from "@/components/player-stats";
 import { Achievements } from "@/components/achievements";
 import { PriceChart } from "@/components/price-chart";
+import { DashboardTutorial } from "@/components/dashboard-tutorial";
 import { Zap } from "lucide-react";
 
 export default function Home() {
-  const { onboardingComplete, tickPrices } = useGameStore();
+  const { onboardingComplete, tutorialComplete, tickPrices } = useGameStore();
 
   // Tick prices every 2 seconds
   useEffect(() => {
@@ -45,22 +46,37 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left sidebar — Markets */}
         <div className="lg:col-span-3 space-y-4">
-          <PlayerStats />
-          <MarketTable />
+          <div data-tutorial="player-stats">
+            <PlayerStats />
+          </div>
+          <div data-tutorial="market-table">
+            <MarketTable />
+          </div>
         </div>
 
         {/* Center — Chart & Trading */}
         <div className="lg:col-span-5 space-y-4">
-          <PriceChart />
-          <TradePanel />
+          <div data-tutorial="price-chart">
+            <PriceChart />
+          </div>
+          <div data-tutorial="trade-panel">
+            <TradePanel />
+          </div>
         </div>
 
         {/* Right sidebar — Portfolio & Achievements */}
         <div className="lg:col-span-4 space-y-4">
-          <Portfolio />
-          <Achievements />
+          <div data-tutorial="portfolio">
+            <Portfolio />
+          </div>
+          <div data-tutorial="achievements">
+            <Achievements />
+          </div>
         </div>
       </div>
+
+      {/* Tutorial overlay */}
+      {!tutorialComplete && <DashboardTutorial />}
     </div>
   );
 }

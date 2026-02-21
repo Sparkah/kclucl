@@ -52,10 +52,16 @@ type GameState = {
   onboardingStep: number;
   onboardingComplete: boolean;
 
+  // Tutorial
+  tutorialStep: number;
+  tutorialComplete: boolean;
+
   // Actions
   setName: (name: string) => void;
   completeOnboarding: () => void;
   advanceOnboarding: () => void;
+  advanceTutorial: () => void;
+  completeTutorial: () => void;
   selectAsset: (id: string) => void;
   buyAsset: (assetId: string, quantity: number) => void;
   sellAsset: (assetId: string, quantity: number) => void;
@@ -114,12 +120,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   totalTrades: 0,
   onboardingStep: 0,
   onboardingComplete: false,
+  tutorialStep: 0,
+  tutorialComplete: false,
 
   setName: (name) => set({ name }),
 
   completeOnboarding: () => set({ onboardingComplete: true }),
 
   advanceOnboarding: () => set((s) => ({ onboardingStep: s.onboardingStep + 1 })),
+
+  advanceTutorial: () => set((s) => ({ tutorialStep: s.tutorialStep + 1 })),
+  completeTutorial: () => set({ tutorialComplete: true }),
 
   selectAsset: (id) => set({ selectedAssetId: id }),
 
