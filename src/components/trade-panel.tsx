@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useGameStore } from "@/store/game-store";
-import { ArrowUpRight, ArrowDownRight, Info, Settings2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2 } from "lucide-react";
 
 const ORDER_SIZES = [25, 50, 100, 250];
 
@@ -12,6 +12,9 @@ export function TradePanel() {
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [flashBuy, setFlashBuy] = useState(false);
   const [flashSell, setFlashSell] = useState(false);
+  const [analysis, setAnalysis] = useState("");
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [lastAnalysedId, setLastAnalysedId] = useState<string | null>(null);
 
   const asset = assets.find((a) => a.id === selectedAssetId);
   const position = positions.find((p) => p.assetId === selectedAssetId);
@@ -49,6 +52,35 @@ export function TradePanel() {
     sellAsset(asset.id, Number(units.toFixed(6)));
     setFlashSell(true);
     setTimeout(() => setFlashSell(false), 400);
+  };
+
+  const handleAnalyse = async () => {
+    if (analysisLoading) return;
+    setAnalysisLoading(true);
+    setAnalysis("");
+    setLastAnalysedId(asset.id);
+    try {
+      const res = await fetch("/api/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: asset.symbol,
+          name: asset.name,
+          sector: asset.sector,
+          price: asset.price,
+          change24h: asset.change24h,
+          priceHistory: asset.priceHistory.slice(-10),
+          hasPosition: !!position,
+          pnl: position ? pnl : null,
+        }),
+      });
+      const data = await res.json();
+      setAnalysis(data.analysis || "Analysis unavailable.");
+    } catch {
+      setAnalysis("Failed to get analysis. Check your connection.");
+    } finally {
+      setAnalysisLoading(false);
+    }
   };
 
   return (
@@ -140,6 +172,38 @@ export function TradePanel() {
           <div className="text-xs font-normal opacity-60 mt-0.5">Market Order</div>
         </button>
       </div>
+
+      {/* AI Analyse button */}
+      <button
+        onClick={handleAnalyse}
+        disabled={analysisLoading}
+        className="w-full mt-3 py-3 rounded-xl font-semibold text-sm transition-all bg-neon-purple/15 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/25 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {analysisLoading ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <BrainCircuit size={16} />
+        )}
+        {analysisLoading ? "Analysing..." : "AI Analysis"}
+      </button>
+
+      {/* Analysis output */}
+      {(analysis || (analysisLoading && lastAnalysedId === asset.id)) && (
+        <div className="mt-3 bg-dark-700 border border-neon-purple/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2 text-xs text-neon-purple uppercase tracking-wider">
+            <BrainCircuit size={12} />
+            AI Risk Analyst
+          </div>
+          {analysisLoading ? (
+            <div className="flex items-center gap-2 text-sm text-white/40">
+              <Loader2 size={14} className="animate-spin" />
+              Processing market data...
+            </div>
+          ) : (
+            <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{analysis}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
