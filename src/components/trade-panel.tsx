@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useGameStore } from "@/store/game-store";
-import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2, Send, ChevronDown, ChevronUp, Volume2 } from "lucide-react";
 import { PatronusSprite, PATRONUS_LIST } from "./patronus-sprites";
 
 const ORDER_SIZES = [25, 50, 100, 250];
@@ -26,6 +26,8 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [voiceLoadingIndex, setVoiceLoadingIndex] = useState<number | null>(null);
+  const [voiceError, setVoiceError] = useState("");
 
   const asset = assets.find((a) => a.id === selectedAssetId);
   const position = positions.find((p) => p.assetId === selectedAssetId);
@@ -40,6 +42,8 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
     setChatInput("");
     setChatOpen(false);
     setAnalysisLoading(false);
+    setVoiceLoadingIndex(null);
+    setVoiceError("");
   }, [asset?.id]);
 
   if (!asset) {
@@ -147,6 +151,36 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
       setChatMessages((prev) => [...prev, { role: "assistant", content: "Chat request failed. Please try again." }]);
     } finally {
       setAnalysisLoading(false);
+    }
+  };
+
+  const handlePlayVoice = async (text: string, index: number) => {
+    if (!text.trim() || voiceLoadingIndex !== null) return;
+    setVoiceError("");
+    setVoiceLoadingIndex(index);
+    try {
+      const res = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, patronus }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setVoiceError(data?.error || "Voice playback failed.");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      audio.onerror = () => URL.revokeObjectURL(url);
+      await audio.play();
+    } catch {
+      setVoiceError("Voice playback failed.");
+    } finally {
+      setVoiceLoadingIndex(null);
     }
   };
 
@@ -286,7 +320,22 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
                     : "bg-white/10 text-white"
                 }`}
               >
-                {message.content}
+                <div>{message.content}</div>
+                {message.role === "assistant" && (
+                  <button
+                    type="button"
+                    onClick={() => handlePlayVoice(message.content, idx)}
+                    disabled={voiceLoadingIndex !== null}
+                    className="mt-2 inline-flex items-center gap-1 rounded-md border border-neon-purple/30 bg-neon-purple/10 px-2 py-1 text-[11px] text-neon-purple hover:bg-neon-purple/20 disabled:opacity-50"
+                  >
+                    {voiceLoadingIndex === idx ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Volume2 size={12} />
+                    )}
+                    Listen
+                  </button>
+                )}
               </div>
             ))}
 
@@ -297,6 +346,7 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
               </div>
             )}
           </div>
+          {voiceError && <p className="mt-2 text-[11px] text-loss">{voiceError}</p>}
 
           <form onSubmit={handleSendChat} className="mt-3 flex items-center gap-2 min-w-0">
             <input
