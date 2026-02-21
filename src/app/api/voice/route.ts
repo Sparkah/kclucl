@@ -16,7 +16,12 @@ function getVoiceIdForPatronus(patronus: string | null | undefined) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   const patronus = typeof body?.patronus === "string" ? body.patronus : null;
 
@@ -26,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "Voiceover not configured. Set ELEVENLABS_API_KEY." }, { status: 200 });
+    return NextResponse.json({ error: "Voiceover not configured." }, { status: 503 });
   }
 
   const voiceId = getVoiceIdForPatronus(patronus);

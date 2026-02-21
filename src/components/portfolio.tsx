@@ -34,7 +34,7 @@ export function Portfolio() {
     [assets, positions]
   );
 
-  const pieColors = ["#00f0ff", "#39ff14", "#b44aff", "#ff6b2b", "#ff2d95", "#62dbff"];
+  const pieColors = ["#00f0ff", "#b44aff", "#39ff14", "#ff6b2b", "#ff2d95", "#62dbff"];
 
   return (
     <div className="glass-card rounded-2xl p-6">
@@ -43,22 +43,23 @@ export function Portfolio() {
       </h3>
 
       {/* Total value */}
-      <div className="mb-4">
+      <div className="mb-4 p-3 rounded-xl bg-dark-700/40">
+        <div className="text-xs text-white/40 mb-1">Total Value</div>
         <div className="text-3xl font-mono font-bold">₮{totalValue.toFixed(2)}</div>
-        <div className={`text-sm ${totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
+        <div className={`text-sm font-mono ${totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
           {totalPnl >= 0 ? "+" : ""}{totalPnl.toFixed(2)}% all time
         </div>
       </div>
 
       {/* Cash */}
-      <div className="flex justify-between text-sm py-2 border-b border-white/5">
-        <span className="text-white/40">Available Cash</span>
-        <span className="font-mono">₮{credits.toFixed(2)}</span>
+      <div className="flex justify-between text-sm py-2.5 px-3 rounded-lg bg-dark-700/30 border border-white/5">
+        <span className="text-white/50">Available Cash</span>
+        <span className="font-mono text-neon-blue">₮{credits.toFixed(2)}</span>
       </div>
 
       {/* Holdings */}
       {positions.length > 0 ? (
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-1.5">
           <div className="text-xs text-white/30 uppercase tracking-wider flex items-center gap-1">
             <PieChart size={10} /> Holdings
           </div>
@@ -91,23 +92,28 @@ export function Portfolio() {
               </ResponsiveContainer>
             </div>
           )}
-          {positions.map((pos) => {
+          {positions.map((pos, idx) => {
             const asset = assets.find((a) => a.id === pos.assetId);
             if (!asset) return null;
             const value = asset.price * pos.quantity;
             const pnl = ((asset.price - pos.avgPrice) / pos.avgPrice) * 100;
+            const color = pieColors[idx % pieColors.length];
             return (
-              <div key={pos.assetId} className="flex items-center justify-between py-1.5">
+              <div
+                key={pos.assetId}
+                className="flex items-center justify-between py-2 px-3 rounded-lg bg-dark-700/50 border-l-2"
+                style={{ borderLeftColor: color }}
+              >
                 <div className="flex items-center gap-2">
                   <span>{asset.emoji}</span>
                   <div>
                     <div className="text-sm font-semibold">{asset.symbol}</div>
-                    <div className="text-xs text-white/30">{pos.quantity.toFixed(3)} shares</div>
+                    <div className="text-xs text-white/40">{pos.quantity.toFixed(3)} shares</div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-mono">₮{value.toFixed(2)}</div>
-                  <div className={`text-xs ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                  <div className={`text-xs font-mono ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
                     {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%
                   </div>
                 </div>

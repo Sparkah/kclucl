@@ -33,6 +33,7 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
   const voiceAbortRef = useRef<AbortController | null>(null);
   const voiceRequestIdRef = useRef(0);
   const isMountedRef = useRef(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const asset = assets.find((a) => a.id === selectedAssetId);
   const position = positions.find((p) => p.assetId === selectedAssetId);
@@ -83,6 +84,10 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
     setVoiceLoadingIndex(null);
     setVoiceError("");
   }, [asset?.id]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages.length, analysisLoading]);
 
   if (!asset) {
     return (
@@ -386,12 +391,13 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
                     : "bg-white/10 text-white"
                 }`}
               >
+                <div>{message.content}</div>
                 {message.role === "assistant" && (
                   <button
                     type="button"
                     onClick={() => handlePlayVoice(message.content, idx)}
                     disabled={voiceLoadingIndex !== null}
-                    className="mt-2 inline-flex items-center gap-1 rounded-md border border-neon-purple/30 bg-neon-purple/10 px-2 py-1 text-[11px] text-neon-purple hover:bg-neon-purple/20 disabled:opacity-50"
+                    className="mt-2 inline-flex items-center gap-1 rounded-md border border-profit/40 bg-profit/10 px-2.5 py-1 text-[11px] text-profit font-medium hover:bg-profit/20 disabled:opacity-50 transition-colors"
                   >
                     {voiceLoadingIndex === idx ? (
                       <Loader2 size={12} className="animate-spin" />
@@ -401,7 +407,6 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
                     Listen
                   </button>
                 )}
-                <div className={message.role === "assistant" ? "mt-2" : ""}>{message.content}</div>
               </div>
             ))}
 
@@ -411,6 +416,7 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
                 Thinking...
               </div>
             )}
+            <div ref={chatEndRef} />
           </div>
           {voiceError && <p className="mt-2 text-[11px] text-loss">{voiceError}</p>}
 
