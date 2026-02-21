@@ -20,42 +20,47 @@ export function PlayerStats() {
   const playPatronusSound = () => {
     if (!patronus || typeof window === "undefined") return;
 
-    const AudioCtx =
-      window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
 
-    const ctx = new AudioCtx();
-    const start = ctx.currentTime;
+      const ctx = new AudioCtx();
+      const start = ctx.currentTime;
 
-    const patterns: Record<string, number[]> = {
-      batman: [220, 196, 165],
-      "nyan-cat": [659, 784, 988, 784],
-      doge: [392, 494, 440],
-      "flappy-bird": [880, 698, 880],
-      pepe: [311, 277, 247],
-      capybara: [262, 294, 330],
-      chad: [440, 554, 659],
-    };
-    const freqs = patterns[patronus] || [392, 523];
+      const patterns: Record<string, number[]> = {
+        batman: [220, 196, 165],
+        "nyan-cat": [659, 784, 988, 784],
+        doge: [392, 494, 440],
+        "flappy-bird": [880, 698, 880],
+        pepe: [311, 277, 247],
+        capybara: [262, 294, 330],
+        chad: [440, 554, 659],
+      };
+      const freqs = patterns[patronus] || [392, 523];
 
-    freqs.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(freq, start + i * 0.11);
-      gain.gain.setValueAtTime(0.001, start + i * 0.11);
-      gain.gain.exponentialRampToValueAtTime(0.08, start + i * 0.11 + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + i * 0.11 + 0.1);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(start + i * 0.11);
-      osc.stop(start + i * 0.11 + 0.105);
-    });
+      freqs.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, start + i * 0.11);
+        gain.gain.setValueAtTime(0.001, start + i * 0.11);
+        gain.gain.exponentialRampToValueAtTime(0.08, start + i * 0.11 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + i * 0.11 + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start + i * 0.11);
+        osc.stop(start + i * 0.11 + 0.105);
+      });
 
-    // Cleanup audio context after the sound effect finishes.
-    setTimeout(() => {
-      void ctx.close();
-    }, freqs.length * 120);
+      // Cleanup audio context after the sound effect finishes.
+      setTimeout(() => {
+        void ctx.close().catch(() => {});
+      }, freqs.length * 120);
+    } catch {
+      // Never break the UI for a non-critical sound effect.
+    }
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useGameStore } from "@/store/game-store";
 import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2, Send, ChevronDown, ChevronUp, Volume2 } from "lucide-react";
 import { PatronusSprite, PATRONUS_LIST } from "./patronus-sprites";
@@ -28,6 +28,11 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [voiceLoadingIndex, setVoiceLoadingIndex] = useState<number | null>(null);
   const [voiceError, setVoiceError] = useState("");
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAudioUrlRef = useRef<string | null>(null);
+  const voiceAbortRef = useRef<AbortController | null>(null);
+  const voiceRequestIdRef = useRef(0);
+  const isMountedRef = useRef(false);
 
   const asset = assets.find((a) => a.id === selectedAssetId);
   const position = positions.find((p) => p.assetId === selectedAssetId);
@@ -36,8 +41,41 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
     [patronus]
   );
 
+  const stopActiveVoice = (resetUi = false) => {
+    voiceRequestIdRef.current += 1;
+
+    if (voiceAbortRef.current) {
+      voiceAbortRef.current.abort();
+      voiceAbortRef.current = null;
+    }
+
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.currentTime = 0;
+      activeAudioRef.current = null;
+    }
+
+    if (activeAudioUrlRef.current) {
+      URL.revokeObjectURL(activeAudioUrlRef.current);
+      activeAudioUrlRef.current = null;
+    }
+
+    if (resetUi && isMountedRef.current) {
+      setVoiceLoadingIndex(null);
+    }
+  };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      stopActiveVoice();
+    };
+  }, []);
+
   useEffect(() => {
     if (!asset) return;
+    stopActiveVoice(true);
     setChatMessages([]);
     setChatInput("");
     setChatOpen(false);
@@ -155,14 +193,19 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
   };
 
   const handlePlayVoice = async (text: string, index: number) => {
-    if (!text.trim() || voiceLoadingIndex !== null) return;
+    if (!text.trim()) return;
+    stopActiveVoice(true);
     setVoiceError("");
     setVoiceLoadingIndex(index);
+    const requestId = voiceRequestIdRef.current;
+    const controller = new AbortController();
+    voiceAbortRef.current = controller;
     try {
       const res = await fetch("/api/voice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, patronus }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -174,13 +217,35 @@ export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      audio.onerror = () => URL.revokeObjectURL(url);
+      activeAudioRef.current = audio;
+      activeAudioUrlRef.current = url;
+      voiceAbortRef.current = null;
+
+      const cleanup = () => {
+        if (activeAudioRef.current === audio) {
+          activeAudioRef.current = null;
+        }
+        if (activeAudioUrlRef.current === url) {
+          URL.revokeObjectURL(url);
+          activeAudioUrlRef.current = null;
+        }
+      };
+
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
       await audio.play();
     } catch {
-      setVoiceError("Voice playback failed.");
+      if (
+        isMountedRef.current &&
+        !controller.signal.aborted &&
+        requestId === voiceRequestIdRef.current
+      ) {
+        setVoiceError("Voice playback failed.");
+      }
     } finally {
-      setVoiceLoadingIndex(null);
+      if (isMountedRef.current && requestId === voiceRequestIdRef.current) {
+        setVoiceLoadingIndex(null);
+      }
     }
   };
 
