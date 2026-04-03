@@ -75,7 +75,7 @@ export function MarketTable() {
         Markets
       </h3>
       <p className="text-[11px] text-white/35 px-4 mb-3">
-        2036 AI board: the five most traded frontier model companies.
+        Tap any row to select an AI company.
       </p>
       <div className="space-y-1">
         {assets.map((asset) => (

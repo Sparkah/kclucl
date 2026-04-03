@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useGameStore } from "@/store/game-store";
-import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Info, Settings2, BrainCircuit, Loader2, Send, ChevronDown, ChevronUp, Volume2 } from "lucide-react";
 import { PatronusSprite, PATRONUS_LIST } from "./patronus-sprites";
 
 const ORDER_SIZES = [25, 50, 100, 250];
@@ -12,7 +12,11 @@ type ChatMessage = {
   content: string;
 };
 
-export function TradePanel() {
+type TradePanelProps = {
+  onAiAnalysisStart?: () => void;
+};
+
+export function TradePanel({ onAiAnalysisStart }: TradePanelProps) {
   const { assets, selectedAssetId, credits, positions, buyAsset, sellAsset, patronus, name } = useGameStore();
   const [orderSize, setOrderSize] = useState(50);
   const [showSizeSelector, setShowSizeSelector] = useState(false);
@@ -22,6 +26,14 @@ export function TradePanel() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [voiceLoadingIndex, setVoiceLoadingIndex] = useState<number | null>(null);
+  const [voiceError, setVoiceError] = useState("");
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeAudioUrlRef = useRef<string | null>(null);
+  const voiceAbortRef = useRef<AbortController | null>(null);
+  const voiceRequestIdRef = useRef(0);
+  const isMountedRef = useRef(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const asset = assets.find((a) => a.id === selectedAssetId);
   const position = positions.find((p) => p.assetId === selectedAssetId);
@@ -30,13 +42,52 @@ export function TradePanel() {
     [patronus]
   );
 
+  const stopActiveVoice = (resetUi = false) => {
+    voiceRequestIdRef.current += 1;
+
+    if (voiceAbortRef.current) {
+      voiceAbortRef.current.abort();
+      voiceAbortRef.current = null;
+    }
+
+    if (activeAudioRef.current) {
+      activeAudioRef.current.pause();
+      activeAudioRef.current.currentTime = 0;
+      activeAudioRef.current = null;
+    }
+
+    if (activeAudioUrlRef.current) {
+      URL.revokeObjectURL(activeAudioUrlRef.current);
+      activeAudioUrlRef.current = null;
+    }
+
+    if (resetUi && isMountedRef.current) {
+      setVoiceLoadingIndex(null);
+    }
+  };
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      stopActiveVoice();
+    };
+  }, []);
+
   useEffect(() => {
     if (!asset) return;
+    stopActiveVoice(true);
     setChatMessages([]);
     setChatInput("");
     setChatOpen(false);
     setAnalysisLoading(false);
+    setVoiceLoadingIndex(null);
+    setVoiceError("");
   }, [asset?.id]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages.length, analysisLoading]);
 
   if (!asset) {
     return (
@@ -75,6 +126,7 @@ export function TradePanel() {
 
   const handleAnalyse = async () => {
     if (analysisLoading) return;
+    onAiAnalysisStart?.();
     setAnalysisLoading(true);
     setChatOpen(true);
     try {
@@ -145,6 +197,63 @@ export function TradePanel() {
     }
   };
 
+  const handlePlayVoice = async (text: string, index: number) => {
+    if (!text.trim()) return;
+    stopActiveVoice(true);
+    setVoiceError("");
+    setVoiceLoadingIndex(index);
+    const requestId = voiceRequestIdRef.current;
+    const controller = new AbortController();
+    voiceAbortRef.current = controller;
+    try {
+      const res = await fetch("/api/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, patronus }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setVoiceError(data?.error || "Voice playback failed.");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      activeAudioRef.current = audio;
+      activeAudioUrlRef.current = url;
+      voiceAbortRef.current = null;
+
+      const cleanup = () => {
+        if (activeAudioRef.current === audio) {
+          activeAudioRef.current = null;
+        }
+        if (activeAudioUrlRef.current === url) {
+          URL.revokeObjectURL(url);
+          activeAudioUrlRef.current = null;
+        }
+      };
+
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
+      await audio.play();
+    } catch {
+      if (
+        isMountedRef.current &&
+        !controller.signal.aborted &&
+        requestId === voiceRequestIdRef.current
+      ) {
+        setVoiceError("Voice playback failed.");
+      }
+    } finally {
+      if (isMountedRef.current && requestId === voiceRequestIdRef.current) {
+        setVoiceLoadingIndex(null);
+      }
+    }
+  };
+
   return (
     <div className="glass-card rounded-2xl p-6">
       {/* Asset header */}
@@ -168,7 +277,7 @@ export function TradePanel() {
         <div className="bg-dark-700 rounded-xl p-3 mb-4 flex justify-between text-sm">
           <div>
             <span className="text-white/40">Holding: </span>
-            <span className="font-mono">{position.quantity.toFixed(4)} units</span>
+            <span className="font-mono">{position.quantity.toFixed(3)} shares</span>
           </div>
           <div>
             <span className="text-white/40">P&L: </span>
@@ -237,6 +346,7 @@ export function TradePanel() {
 
       {/* AI Analyse button */}
       <button
+        data-tutorial="ai-analysis-btn"
         onClick={handleAnalyse}
         disabled={analysisLoading}
         className="w-full mt-3 py-3 rounded-xl font-semibold text-sm transition-all bg-neon-purple/15 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/25 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
@@ -248,6 +358,9 @@ export function TradePanel() {
         )}
         {analysisLoading ? "Analysing..." : "AI Analysis"}
       </button>
+      <p className="mt-1.5 text-[11px] text-white/35 text-center">
+        Tip: Ask short questions like "buy now?" or "explain this move".
+      </p>
 
       {/* Patronus chat */}
       {chatOpen && (
@@ -278,7 +391,22 @@ export function TradePanel() {
                     : "bg-white/10 text-white"
                 }`}
               >
-                {message.content}
+                <div>{message.content}</div>
+                {message.role === "assistant" && (
+                  <button
+                    type="button"
+                    onClick={() => handlePlayVoice(message.content, idx)}
+                    disabled={voiceLoadingIndex !== null}
+                    className="mt-2 inline-flex items-center gap-1 rounded-md border border-profit/40 bg-profit/10 px-2.5 py-1 text-[11px] text-profit font-medium hover:bg-profit/20 disabled:opacity-50 transition-colors"
+                  >
+                    {voiceLoadingIndex === idx ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Volume2 size={12} />
+                    )}
+                    Listen
+                  </button>
+                )}
               </div>
             ))}
 
@@ -288,7 +416,9 @@ export function TradePanel() {
                 Thinking...
               </div>
             )}
+            <div ref={chatEndRef} />
           </div>
+          {voiceError && <p className="mt-2 text-[11px] text-loss">{voiceError}</p>}
 
           <form onSubmit={handleSendChat} className="mt-3 flex items-center gap-2 min-w-0">
             <input

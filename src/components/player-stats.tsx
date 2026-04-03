@@ -17,15 +17,67 @@ export function PlayerStats() {
   const xpPct = (xp / xpToNext) * 100;
   const unlockedCount = achievements.filter((a) => a.unlockedAt).length;
 
+  const playPatronusSound = () => {
+    if (!patronus || typeof window === "undefined") return;
+
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      const ctx = new AudioCtx();
+      const start = ctx.currentTime;
+
+      const patterns: Record<string, number[]> = {
+        batman: [220, 196, 165],
+        "nyan-cat": [659, 784, 988, 784],
+        doge: [392, 494, 440],
+        "flappy-bird": [880, 698, 880],
+        pepe: [311, 277, 247],
+        capybara: [262, 294, 330],
+        chad: [440, 554, 659],
+      };
+      const freqs = patterns[patronus] || [392, 523];
+
+      freqs.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, start + i * 0.11);
+        gain.gain.setValueAtTime(0.001, start + i * 0.11);
+        gain.gain.exponentialRampToValueAtTime(0.08, start + i * 0.11 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + i * 0.11 + 0.1);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start + i * 0.11);
+        osc.stop(start + i * 0.11 + 0.105);
+      });
+
+      // Cleanup audio context after the sound effect finishes.
+      setTimeout(() => {
+        void ctx.close().catch(() => {});
+      }, freqs.length * 120);
+    } catch {
+      // Never break the UI for a non-critical sound effect.
+    }
+  };
+
   return (
     <>
       <div className="glass-card rounded-2xl p-6">
         {/* Player header */}
         <div className="flex items-center gap-3 mb-4">
           {patronus ? (
-            <div className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={playPatronusSound}
+              className="w-10 h-10 rounded-full bg-dark-700 flex items-center justify-center hover:bg-dark-600 transition-colors"
+              title="Tap for patronus sound"
+              aria-label="Play patronus sound"
+            >
               <PatronusSprite id={patronus} size={32} />
-            </div>
+            </button>
           ) : (
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center text-lg font-bold">
               {name?.[0]?.toUpperCase() || "?"}
